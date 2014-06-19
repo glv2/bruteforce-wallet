@@ -408,7 +408,10 @@ int main(int argc, char **argv)
           exit(EXIT_FAILURE);
         }
       indexes[i][0] = i * (charset_len / nb_threads);
-      indexes[i][1] = (i + 1) * (charset_len / nb_threads) - 1;
+      if(i == nb_threads - 1)
+        indexes[i][1] = charset_len - 1;
+      else
+        indexes[i][1] = (i + 1) * (charset_len / nb_threads) - 1;
       ret = pthread_create(&decryption_threads[i], NULL, &decryption_func, indexes[i]);
       if(ret != 0)
         {
