@@ -2,7 +2,8 @@ bruteforce-salted-openssl
 =========================
 
 The purpose of this program is to try to decrypt a file that was encrypted
-with openssl (e.g.: openssl enc -aes256 -salt -in input.file -out output.file).
+with the 'openssl' command (e.g.: openssl enc -aes256 -salt -in clear.file
+ -out encrypted.file).
 
 The program tries to decrypt the file by trying all the possible passwords.
 The minimum and maximum password length to try can be indicated as option
@@ -14,21 +15,39 @@ The program should be able to use all the digests and symmetric ciphers
 available with the OpenSSL libraries installed on your system.
 
 
-Dependencies:
--------------
+## Dependencies
 
 The program requires the OpenSSL libraries.
 
 
-Examples:
----------
+## Limitations
 
-Try to decrypt a aes256 encrypted file using 4 threads, trying 
+The program considers decrypted data as correct if it is mainly composed of
+printable ASCII characters (at least 90%).
+If the file you want to decrypt doesn't contain plain text, you will have
+to modify the 'valid_data' function in the source code to match your needs.
+
+
+## Examples
+
+Try to decrypt a aes256 encrypted file using 4 threads, trying
 only passwords with 5 characters:
 
-  bruteforce-salted-openssl -t 4 -l 5 -m 5 -c aes256 encrypted.file
+    bruteforce-salted-openssl -t 4 -l 5 -m 5 -c aes256 encrypted.file
 
 
 Show the list of available algorithms:
 
-  bruteforce-salted-openssl -a
+    bruteforce-salted-openssl -a
+
+
+If the program finds a candidate password 'pwd', you can decrypt the data
+using the 'openssl' command:
+
+    openssl enc -d -aes256 -salt -in encrypted.file -out decrypted.file -k pwd
+
+
+## Donations
+
+If you find this program useful and want to make a donation, you can send coins
+to the following Peercoin address: PWFNV1Cvq7nQBRyRueuYzwmDNXUGpgNkBC.
