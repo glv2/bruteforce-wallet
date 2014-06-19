@@ -1,0 +1,34 @@
+bruteforce-salted-openssl
+=========================
+
+The purpose of this program is to try to decrypt a file that was encrypted
+with openssl (e.g.: openssl enc -aes256 -salt -in input.file -out output.file).
+
+The program tries to decrypt the file by trying all the possible passwords.
+The minimum and maximum password length to try can be indicated as option
+on the command line.
+There are also options to indicate the cipher, digest, character set and
+number of threads to use.
+
+The program should be able to use all the digests and symmetric ciphers
+available with the OpenSSL libraries installed on your system.
+
+
+Dependencies:
+-------------
+
+The program requires the OpenSSL libraries.
+
+
+Examples:
+---------
+
+Try to decrypt a aes256 encrypted file using 4 threads, trying 
+only passwords with 5 characters:
+
+  bruteforce-salted-openssl -t 4 -l 5 -m 5 -c aes256 encrypted.file
+
+
+Show the list of available algorithms:
+
+  bruteforce-salted-openssl -a

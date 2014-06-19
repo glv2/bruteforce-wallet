@@ -1,0 +1,15 @@
+aclocal.m4
+autom4te.cache/
+bruteforce-salted-openssl
+compile
+config.log
+config.status
+configure
+depcomp
+.deps/
+install-sh
+Makefile
+Makefile.in
+missing
+src/.dirstamp
+src/*.o
