@@ -1,6 +1,6 @@
 aclocal.m4
 autom4te.cache/
-bruteforce-salted-openssl
+/bruteforce-salted-openssl
 compile
 config.log
 config.status

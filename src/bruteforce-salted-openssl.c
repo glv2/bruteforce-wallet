@@ -28,6 +28,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <sys/types.h>
 #include <unistd.h>
 
+#include "version.h"
 
 unsigned char *default_charset = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
 unsigned char *charset = NULL, *data = NULL, salt[8];
@@ -79,7 +80,7 @@ void * decryption_func(void *arg)
   out = (unsigned char *) malloc(data_len + EVP_CIPHER_block_size(cipher));
   if((key == NULL) || (iv == NULL) || (out == NULL))
     {
-      fprintf(stderr, "Error: memory allocation failed.\n");
+      fprintf(stderr, "Error: memory allocation failed.\n\n");
       exit(EXIT_FAILURE);
     }
 
@@ -93,7 +94,7 @@ void * decryption_func(void *arg)
           tab = (unsigned int *) malloc((len + 1) * sizeof(unsigned int));
           if((password == NULL) || (tab == NULL))
             {
-              fprintf(stderr, "Error: memory allocation failed.\n");
+              fprintf(stderr, "Error: memory allocation failed.\n\n");
               exit(EXIT_FAILURE);
             }
           password[0] = prefix;
@@ -209,6 +210,7 @@ void list_digests(const EVP_MD *d, const char *from, const char *to, void *arg)
 
 void usage(char *progname)
 {
+  fprintf(stderr, "\nbruteforce-salted-openssl %s\n\n", VERSION);
   fprintf(stderr, "Usage: %s [options] <filename>\n\n", progname);
   fprintf(stderr, "Options:\n");
   fprintf(stderr, "  -1           Stop the program after finding the first password candidate.\n");
@@ -268,7 +270,7 @@ int main(int argc, char **argv)
         cipher = EVP_get_cipherbyname(optarg);
         if(cipher == NULL)
           {
-            fprintf(stderr, "Error: unknown cipher: %s.\n", optarg);
+            fprintf(stderr, "Error: unknown cipher: %s.\n\n", optarg);
             exit(EXIT_FAILURE);
           }
         break;
@@ -277,7 +279,7 @@ int main(int argc, char **argv)
         digest = EVP_get_digestbyname(optarg);
         if(digest == NULL)
           {
-            fprintf(stderr, "Error: unknown digest: %s.\n", optarg);
+            fprintf(stderr, "Error: unknown digest: %s.\n\n", optarg);
             exit(EXIT_FAILURE);
           }
         break;
@@ -310,9 +312,9 @@ int main(int argc, char **argv)
       default:
         usage(argv[0]);
         if((optopt == 'c') || (optopt == 'd') || (optopt == 'l') || (optopt == 'm') || (optopt == 's') || (optopt == 't'))
-          fprintf(stderr, "Error: missing argument for option: '-%c'.\n", optopt);
+          fprintf(stderr, "Error: missing argument for option: '-%c'.\n\n", optopt);
         else
-          fprintf(stderr, "Error: unknown option: '%c'.\n", optopt);
+          fprintf(stderr, "Error: unknown option: '%c'.\n\n", optopt);
         exit(EXIT_FAILURE);
         break;
       }
@@ -320,7 +322,7 @@ int main(int argc, char **argv)
   if(optind >= argc)
     {
       usage(argv[0]);
-      fprintf(stderr, "Error: missing filename.\n");
+      fprintf(stderr, "Error: missing filename.\n\n");
       exit(EXIT_FAILURE);
     }
 
@@ -335,7 +337,7 @@ int main(int argc, char **argv)
   charset_len = strlen(charset);
   if(charset_len == 0)
     {
-      fprintf(stderr, "Error: charset must have at least one character.\n");
+      fprintf(stderr, "Error: charset must have at least one character.\n\n");
       exit(EXIT_FAILURE);
     }
   if(max_len < min_len)
@@ -353,7 +355,7 @@ int main(int argc, char **argv)
   if(strncmp(salt, "Salted__", 8) != 0)
     {
       close(fd);
-      fprintf(stderr, "Error: %s is not a salted openssl file.\n", filename);
+      fprintf(stderr, "Error: %s is not a salted openssl file.\n\n", filename);
       exit(EXIT_FAILURE);
     }
 
@@ -362,7 +364,7 @@ int main(int argc, char **argv)
   if(ret != 8)
     {
       close(fd);
-      fprintf(stderr, "Error: could not read salt.\n");
+      fprintf(stderr, "Error: could not read salt.\n\n");
       exit(EXIT_FAILURE);
     }
 
@@ -372,7 +374,7 @@ int main(int argc, char **argv)
   data = (char *) malloc(data_len);
   if(data == NULL)
     {
-      fprintf(stderr, "Error: memory allocation failed.\n");
+      fprintf(stderr, "Error: memory allocation failed.\n\n");
       exit(EXIT_FAILURE);
     }
   for(i = 0; i < data_len;)
@@ -381,7 +383,7 @@ int main(int argc, char **argv)
       if(ret == -1)
         {
           close(fd);
-          fprintf(stderr, "Error: could not read data.\n");
+          fprintf(stderr, "Error: could not read data.\n\n");
           exit(EXIT_FAILURE);
         }
       else if(ret > 0)
@@ -396,7 +398,7 @@ int main(int argc, char **argv)
   indexes = (unsigned int **) malloc(nb_threads * sizeof(unsigned int *));
   if((decryption_threads == NULL) || (indexes == NULL))
     {
-      fprintf(stderr, "Error: memory allocation failed.\n");
+      fprintf(stderr, "Error: memory allocation failed.\n\n");
       exit(EXIT_FAILURE);
     }
   for(i = 0; i < nb_threads; i++)
@@ -404,7 +406,7 @@ int main(int argc, char **argv)
       indexes[i] = (unsigned int *) malloc(2 * sizeof(unsigned int));
       if(indexes[i] == NULL)
         {
-          fprintf(stderr, "Error: memory allocation failed.\n");
+          fprintf(stderr, "Error: memory allocation failed.\n\n");
           exit(EXIT_FAILURE);
         }
       indexes[i][0] = i * (charset_len / nb_threads);
