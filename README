@@ -1,50 +1,36 @@
-bruteforce-salted-openssl
-=========================
+bruteforce-wallet
+=================
 
-The purpose of this program is to try to decrypt a file that was encrypted
-with the 'openssl' command (e.g.: openssl enc -aes256 -salt -in clear.file
- -out encrypted.file).
+The purpose of this program is to try to find the password of an encrypted
+Peercoin (or Bitcoin, Litecoin, etc...) wallet file (i.e.: wallet.dat).
 
-The program tries to decrypt the file by trying all the possible passwords.
+The program tries to decrypt one of the encrypted addresses in the wallet by
+trying all the possible passwords.
 The minimum and maximum password length to try can be indicated as option
 on the command line.
-There are also options to indicate the cipher, digest, character set and
-number of threads to use.
-
-The program should be able to use all the digests and symmetric ciphers
-available with the OpenSSL libraries installed on your system.
+There are also options to indicate the character set and number of threads
+to use.
 
 
 ## Dependencies
 
-The program requires the OpenSSL libraries.
+The program requires the OpenSSL and BerkeleyDB libraries.
 
 
 ## Limitations
 
-The program considers decrypted data as correct if it is mainly composed of
-printable ASCII characters (at least 90%).
-If the file you want to decrypt doesn't contain plain text, you will have
-to modify the 'valid_data' function in the source code to match your needs.
+Different versions of BerkeleyDB are usually not compatible with each other.
+Therefore, for the program to work, you will have to check that the BerkeleyDB
+version you are using can read the databases created by the BerkeleyDB version
+your wallet was created with.
 
 
-## Examples
+## Example
 
-Try to decrypt a aes256 encrypted file using 4 threads, trying
+Try to find the password of an encrypted wallet file using 4 threads, trying
 only passwords with 5 characters:
 
-    bruteforce-salted-openssl -t 4 -l 5 -m 5 -c aes256 encrypted.file
-
-
-Show the list of available algorithms:
-
-    bruteforce-salted-openssl -a
-
-
-If the program finds a candidate password 'pwd', you can decrypt the data
-using the 'openssl' command:
-
-    openssl enc -d -aes256 -salt -in encrypted.file -out decrypted.file -k pwd
+    bruteforce-wallet -t 4 -l 5 -m 5 wallet.dat
 
 
 ## Donations

@@ -17,9 +17,9 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef VERSION_H
-#define VERSION_H 1
+#ifndef ELLIPTIC_CURVE_H
+#define ELLIPTIC_CURVE_H 1
 
-#define VERSION "1.0"
+int check_eckey(unsigned char *seckey, unsigned char *pubkey, unsigned int pubkey_len);
 
 #endif
