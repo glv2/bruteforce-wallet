@@ -8,6 +8,7 @@ The program tries to decrypt one of the encrypted addresses in the wallet by
 trying all the possible passwords.
 The minimum and maximum password length to try can be indicated as option
 on the command line.
+The beginning and the end of the password can be specified too.
 There are also options to indicate the character set and number of threads
 to use.
 
@@ -25,12 +26,18 @@ version you are using can read the databases created by the BerkeleyDB version
 your wallet was created with.
 
 
-## Example
+## Examples
 
 Try to find the password of an encrypted wallet file using 4 threads, trying
 only passwords with 5 characters:
 
     bruteforce-wallet -t 4 -l 5 -m 5 wallet.dat
+
+
+Try to find the password of an encrypted wallet file using 8 threads, trying
+only passwords with 5 to 10 characters beginning with "W4l" and ending with "z":
+
+    bruteforce-wallet -t 8 -l 5 -m 10 -b "W4l" -e "z" wallet.dat
 
 
 ## Donations

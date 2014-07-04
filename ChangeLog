@@ -1,2 +1,7 @@
+2014-07-04 Guillaume LE VAILLANT <guillaume.le.vaillant@openmailbox.org>
+	Version 1.1
+	Add the possibility to specify the beginning and the end of the
+	password (-b and -e options).
+
 2014-06-22 Guillaume LE VAILLANT <guillaume.le.vaillant@openmailbox.org>
 	Version 1.0
