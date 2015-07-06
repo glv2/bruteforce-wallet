@@ -1,7 +1,7 @@
 /*
 Bruteforce a wallet file.
 
-Copyright 2014 Guillaume LE VAILLANT
+Copyright 2014-2015 Guillaume LE VAILLANT
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -99,7 +99,7 @@ void * decryption_func(void *arg)
   unsigned int *tab;
   EVP_CIPHER_CTX ctx;
 
-  dfargs = (struct decryption_func_locals *)arg;
+  dfargs = (struct decryption_func_locals *) arg;
   index_start = dfargs->index_start;
   index_end = dfargs->index_end;
   sha256d(pubkey, pubkey_len, hash);
@@ -308,8 +308,8 @@ void handle_signal(int signo)
   for (l = l_skip; l <= l_full; l++)
     space += pow(charset_len, l);
   for (i = 0; i < nb_threads; i++)
-    total_ops = thread_locals[i].counter;
-  fprintf(stderr, "Tried passwords: %lld\n", total_ops);
+    total_ops += thread_locals[i].counter;
+  fprintf(stderr, "Tried passwords: %llu\n", total_ops);
   fprintf(stderr, "Total space searched: %lf%%\n", (total_ops / space) * 100);
 }
 
@@ -467,8 +467,7 @@ int main(int argc, char **argv)
 
   /* Start decryption threads. */
   decryption_threads = (pthread_t *) malloc(nb_threads * sizeof(pthread_t));
-  thread_locals = (struct decryption_func_locals *) calloc(
-    nb_threads, sizeof(struct decryption_func_locals));
+  thread_locals = (struct decryption_func_locals *) calloc(nb_threads, sizeof(struct decryption_func_locals));
   if((decryption_threads == NULL) || (thread_locals == NULL))
     {
       fprintf(stderr, "Error: memory allocation failed.\n\n");

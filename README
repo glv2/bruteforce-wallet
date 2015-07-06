@@ -12,6 +12,9 @@ The beginning and the end of the password can be specified too.
 There are also options to indicate the character set and number of threads
 to use.
 
+Sending a USR1 signal to a running bruteforce-wallet process make it print
+progress info to standard error and continue.
+
 
 ## Dependencies
 
@@ -43,4 +46,6 @@ only passwords with 5 to 10 characters beginning with "W4l" and ending with "z":
 ## Donations
 
 If you find this program useful and want to make a donation, you can send coins
-to the following Peercoin address: PWFNV1Cvq7nQBRyRueuYzwmDNXUGpgNkBC.
+to one of the following addresses:
+ - Peercoin: PWFNV1Cvq7nQBRyRueuYzwmDNXUGpgNkBC
+ - Bitcoin: 1F1ZfM7XtggHsShK4vwuy9zv98a9wt7nXx

@@ -1,3 +1,7 @@
+2015-07-06 Guillaume LE VAILLANT <guillaume.le.vaillant@openmailbox.org>
+	Version 1.2
+	Print progress info when sending a USR1 signal to the process.
+
 2014-07-04 Guillaume LE VAILLANT <guillaume.le.vaillant@openmailbox.org>
 	Version 1.1
 	Add the possibility to specify the beginning and the end of the
