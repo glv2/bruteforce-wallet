@@ -12,7 +12,7 @@ The beginning and the end of the password can be specified too.
 There are also options to indicate the character set and number of threads
 to use.
 
-Sending a USR1 signal to a running bruteforce-wallet process make it print
+Sending a USR1 signal to a running bruteforce-wallet process makes it print
 progress info to standard error and continue.
 
 
