@@ -7,7 +7,7 @@ AC_PROG_CC
 AC_PROG_INSTALL
 
 dnl Check for standard headers
-AC_CHECK_HEADERS([stdio.h stdlib.h string.h unistd.h])
+AC_CHECK_HEADERS([stdio.h stdlib.h string.h unistd.h math.h])
 
 dnl Check for functions
 AC_CHECK_FUNCS([malloc free])
@@ -17,6 +17,8 @@ AC_CHECK_FUNCS([memcmp memset strlen strncpy])
 AC_CHECK_FUNCS([getopt])
 
 dnl Check for libraries
+AC_CHECK_LIB(m, pow, [], AC_MSG_ERROR([math library required]))
+
 AC_CHECK_LIB(pthread, pthread_create, [], AC_MSG_ERROR([POSIX threads library required]))
 AC_CHECK_HEADERS(pthread.h, [], AC_MSG_ERROR([POSIX threads headers required]))
 

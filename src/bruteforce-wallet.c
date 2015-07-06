@@ -19,8 +19,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <ctype.h>
 #include <db.h>
+#include <math.h>
 #include <openssl/evp.h>
 #include <pthread.h>
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -28,6 +30,12 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "elliptic-curve.h"
 #include "version.h"
+
+struct decryption_func_locals {
+  unsigned int index_start;
+  unsigned int index_end;
+  unsigned long long counter;
+} *thread_locals;
 
 
 unsigned char *default_charset = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
@@ -39,6 +47,7 @@ const EVP_CIPHER *cipher;
 const EVP_MD *digest;
 pthread_mutex_t found_password_lock;
 char stop = 0, only_one_password = 0;
+unsigned int nb_threads = 1;
 
 
 /*
@@ -79,9 +88,10 @@ int valid_seckey(unsigned char *seckey, unsigned int seckey_len, unsigned char *
 
 /* The decryption_func thread function tests all the passwords of the form:
  *   prefix + x + combination + suffix
- * where x is a character in the range charset[arg[0]] -> charset[arg[1]]. */
+ * where x is a character in the range charset[dfargs.index_start] -> charset[dfargs.index_end]. */
 void * decryption_func(void *arg)
 {
+  struct decryption_func_locals *dfargs;
   unsigned char *password, *key, *iv, *masterkey, *seckey, hash[32];
   unsigned int password_len, index_start, index_end, len, i, j, k;
   unsigned int masterkey_len1, masterkey_len2, seckey_len1, seckey_len2;
@@ -89,8 +99,9 @@ void * decryption_func(void *arg)
   unsigned int *tab;
   EVP_CIPHER_CTX ctx;
 
-  index_start = ((unsigned int *) arg)[0];
-  index_end = ((unsigned int *) arg)[1];
+  dfargs = (struct decryption_func_locals *)arg;
+  index_start = dfargs->index_start;
+  index_end = dfargs->index_end;
   sha256d(pubkey, pubkey_len, hash);
   key = (unsigned char *) malloc(EVP_CIPHER_key_length(cipher));
   iv = (unsigned char *) malloc(EVP_CIPHER_iv_length(cipher));
@@ -167,6 +178,7 @@ void * decryption_func(void *arg)
                   if(tab[j] == charset_len)
                     tab[j] = 0;
                 }
+              dfargs->counter++;
             }
           free(tab);
           free(password);
@@ -283,6 +295,26 @@ int get_wallet_info(char *filename)
 
 
 /*
+ * Statistics
+ */
+
+void handle_signal(int signo)
+{
+  unsigned long long total_ops = 0;
+  unsigned int i, l;
+  unsigned int l_full = max_len - suffix_len - prefix_len;
+  unsigned int l_skip = min_len - suffix_len - prefix_len;
+  double space = 0;
+  for (l = l_skip; l <= l_full; l++)
+    space += pow(charset_len, l);
+  for (i = 0; i < nb_threads; i++)
+    total_ops = thread_locals[i].counter;
+  fprintf(stderr, "Tried passwords: %lld\n", total_ops);
+  fprintf(stderr, "Total space searched: %lf%%\n", (total_ops / space) * 100);
+}
+
+
+/*
  * Main
  */
 
@@ -307,14 +339,15 @@ void usage(char *progname)
   fprintf(stderr, "  -t <n>       Number of threads to use.\n");
   fprintf(stderr, "                 default: 1\n");
   fprintf(stderr, "\n");
+  fprintf(stderr, "Sending a USR1 signal to a running %s process\n", progname);
+  fprintf(stderr, "makes it print progress info to standard error and continue.\n");
+  fprintf(stderr, "\n");
 }
 
 int main(int argc, char **argv)
 {
-  unsigned int nb_threads = 1;
   pthread_t *decryption_threads;
   char *filename;
-  unsigned int **indexes;
   int i, ret, c;
 
   OpenSSL_add_all_algorithms();
@@ -420,6 +453,8 @@ int main(int argc, char **argv)
       max_len = min_len;
     }
 
+  signal(SIGUSR1, handle_signal);
+
   /* Get data from the encrypted wallet */
   ret = get_wallet_info(filename);
   if(ret == 0)
@@ -432,26 +467,21 @@ int main(int argc, char **argv)
 
   /* Start decryption threads. */
   decryption_threads = (pthread_t *) malloc(nb_threads * sizeof(pthread_t));
-  indexes = (unsigned int **) malloc(nb_threads * sizeof(unsigned int *));
-  if((decryption_threads == NULL) || (indexes == NULL))
+  thread_locals = (struct decryption_func_locals *) calloc(
+    nb_threads, sizeof(struct decryption_func_locals));
+  if((decryption_threads == NULL) || (thread_locals == NULL))
     {
       fprintf(stderr, "Error: memory allocation failed.\n\n");
       exit(EXIT_FAILURE);
     }
   for(i = 0; i < nb_threads; i++)
     {
-      indexes[i] = (unsigned int *) malloc(2 * sizeof(unsigned int));
-      if(indexes[i] == NULL)
-        {
-          fprintf(stderr, "Error: memory allocation failed.\n\n");
-          exit(EXIT_FAILURE);
-        }
-      indexes[i][0] = i * (charset_len / nb_threads);
+      thread_locals[i].index_start = i * (charset_len / nb_threads);
       if(i == nb_threads - 1)
-        indexes[i][1] = charset_len - 1;
+        thread_locals[i].index_end = charset_len - 1;
       else
-        indexes[i][1] = (i + 1) * (charset_len / nb_threads) - 1;
-      ret = pthread_create(&decryption_threads[i], NULL, &decryption_func, indexes[i]);
+        thread_locals[i].index_end = (i + 1) * (charset_len / nb_threads) - 1;
+      ret = pthread_create(&decryption_threads[i], NULL, &decryption_func, &thread_locals[i]);
       if(ret != 0)
         {
           perror("Error: decryption thread");
@@ -462,9 +492,8 @@ int main(int argc, char **argv)
   for(i = 0; i < nb_threads; i++)
     {
       pthread_join(decryption_threads[i], NULL);
-      free(indexes[i]);
     }
-  free(indexes);
+  free(thread_locals);
   free(decryption_threads);
   pthread_mutex_destroy(&found_password_lock);
   free(encrypted_masterkey);
