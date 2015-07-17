@@ -1,4 +1,4 @@
-AC_INIT(bruteforce_wallet, 1.2)
+AC_INIT(bruteforce_wallet, 1.3)
 AM_INIT_AUTOMAKE
 AC_CONFIG_SRCDIR(src/bruteforce-wallet.c)
 
@@ -7,13 +7,14 @@ AC_PROG_CC
 AC_PROG_INSTALL
 
 dnl Check for standard headers
-AC_CHECK_HEADERS([math.h signal.h stdio.h stdlib.h string.h unistd.h])
+AC_CHECK_HEADERS([math.h locale.h signal.h stdio.h stdlib.h string.h unistd.h wchar.h])
 
 dnl Check for functions
 AC_CHECK_FUNCS([calloc malloc free])
 AC_CHECK_FUNCS([perror printf fprintf])
 AC_CHECK_FUNCS([atoi])
-AC_CHECK_FUNCS([memcmp memset strlen strncpy])
+AC_CHECK_FUNCS([memcmp memset])
+AC_CHECK_FUNCS([setlocale mbstowcs wcsncpy wcstombs])
 AC_CHECK_FUNCS([getopt])
 AC_CHECK_FUNCS([signal])
 
