@@ -109,8 +109,8 @@ void * decryption_func(void *arg)
   sha256d(pubkey, pubkey_len, hash);
   key = (unsigned char *) malloc(EVP_CIPHER_key_length(cipher));
   iv = (unsigned char *) malloc(EVP_CIPHER_iv_length(cipher));
-  masterkey = (unsigned char *) malloc(encrypted_masterkey_len + EVP_CIPHER_block_size(cipher));
-  seckey = (unsigned char *) malloc(encrypted_seckey_len + EVP_CIPHER_block_size(cipher));
+  masterkey = (unsigned char *) malloc(encrypted_masterkey_len + EVP_CIPHER_block_size(EVP_aes_256_cbc()));
+  seckey = (unsigned char *) malloc(encrypted_seckey_len + EVP_CIPHER_block_size(EVP_aes_256_cbc()));
   if((key == NULL) || (iv == NULL) || (masterkey == NULL) || (seckey == NULL))
     {
       fprintf(stderr, "Error: memory allocation failed.\n\n");
