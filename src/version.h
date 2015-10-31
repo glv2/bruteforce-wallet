@@ -20,6 +20,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #ifndef VERSION_H
 #define VERSION_H 1
 
-#define VERSION_NUMBER "1.3"
+#define VERSION_NUMBER "1.4"
 
 #endif

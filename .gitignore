@@ -1,6 +1,6 @@
 aclocal.m4
 autom4te.cache/
-bruteforce-wallet
+/bruteforce-wallet
 compile
 config.log
 config.status

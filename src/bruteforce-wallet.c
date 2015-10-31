@@ -42,7 +42,8 @@ unsigned char *pubkey, *encrypted_seckey, *encrypted_masterkey, salt[8];
 unsigned int pubkey_len, encrypted_seckey_len, encrypted_masterkey_len, method, rounds;
 const EVP_CIPHER *cipher;
 const EVP_MD *digest;
-pthread_mutex_t found_password_lock;
+FILE *dictionary = NULL;
+pthread_mutex_t found_password_lock, dictionary_lock;
 char stop = 0;
 unsigned int nb_threads = 1;
 struct decryption_func_locals
@@ -89,10 +90,10 @@ int valid_seckey(unsigned char *seckey, unsigned int seckey_len, unsigned char *
   return(ret);
 }
 
-/* The decryption_func thread function tests all the passwords of the form:
+/* The decryption_func_bruteforce thread function tests all the passwords of the form:
  *   prefix + x + combination + suffix
  * where x is a character in the range charset[dfargs.index_start] -> charset[dfargs.index_end]. */
-void * decryption_func(void *arg)
+void * decryption_func_bruteforce(void *arg)
 {
   struct decryption_func_locals *dfargs;
   wchar_t *password;
@@ -197,6 +198,129 @@ void * decryption_func(void *arg)
           free(password);
         }
     }
+
+  free(masterkey);
+  free(seckey);
+  free(iv);
+  free(key);
+
+  pthread_exit(NULL);
+}
+
+
+int read_dictionary_line(unsigned char **line, unsigned int *n)
+{
+  unsigned int size;
+  int ret;
+
+  *n = 0;
+  size = 32;
+  *line = (unsigned char *) malloc(size);
+  if(*line == NULL)
+    {
+      fprintf(stderr, "Error: memory allocation failed.\n\n");
+      exit(EXIT_FAILURE);
+    }
+
+  while(1)
+    {
+      pthread_mutex_lock(&dictionary_lock);
+      ret = fgetc(dictionary);
+      pthread_mutex_unlock(&dictionary_lock);
+
+      if(ret == EOF)
+        {
+          if(*n == 0)
+            {
+              free(*line);
+              *line = NULL;
+              return(0);
+            }
+          else
+            break;
+        }
+
+      if((ret == '\r') || (ret == '\n'))
+        {
+          if(*n == 0)
+              continue;
+          else
+            break;
+        }
+
+      (*line)[*n] = (unsigned char) ret;
+      (*n)++;
+
+      if(*n == size)
+        {
+          size *= 2;
+          *line = (unsigned char *) realloc(*line, size);
+          if(*line == NULL)
+            {
+              fprintf(stderr, "Error: memory allocation failed.\n\n");
+              exit(EXIT_FAILURE);
+            }
+        }
+    }
+
+  (*line)[*n] = '\0';
+
+  return(1);
+}
+
+void * decryption_func_dictionary(void *arg)
+{
+  struct decryption_func_locals *dfargs;
+  unsigned char *pwd, *key, *iv, *masterkey, *seckey, hash[32];
+  unsigned int pwd_len, masterkey_len1, masterkey_len2, seckey_len1, seckey_len2;
+  int ret;
+  EVP_CIPHER_CTX ctx;
+
+  dfargs = (struct decryption_func_locals *) arg;
+  sha256d(pubkey, pubkey_len, hash);
+  key = (unsigned char *) malloc(EVP_CIPHER_key_length(cipher));
+  iv = (unsigned char *) malloc(EVP_CIPHER_iv_length(cipher));
+  masterkey = (unsigned char *) malloc(encrypted_masterkey_len + EVP_CIPHER_block_size(EVP_aes_256_cbc()));
+  seckey = (unsigned char *) malloc(encrypted_seckey_len + EVP_CIPHER_block_size(EVP_aes_256_cbc()));
+  if((key == NULL) || (iv == NULL) || (masterkey == NULL) || (seckey == NULL))
+    {
+      fprintf(stderr, "Error: memory allocation failed.\n\n");
+      exit(EXIT_FAILURE);
+    }
+
+  do
+    {
+      ret = read_dictionary_line(&pwd, &pwd_len);
+      if(ret == 0)
+        break;
+
+      /* Decrypt the master key with the password */
+      EVP_BytesToKey(cipher, digest, salt, pwd, pwd_len, rounds, key, iv);
+      EVP_DecryptInit(&ctx, EVP_aes_256_cbc(), key, iv);
+      EVP_DecryptUpdate(&ctx, masterkey, &masterkey_len1, encrypted_masterkey, encrypted_masterkey_len);
+      ret = EVP_DecryptFinal(&ctx, masterkey + masterkey_len1, &masterkey_len2);
+      if(ret == 1)
+        {
+          /* Decrypt the secret key with the master key */
+          EVP_CIPHER_CTX_cleanup(&ctx);
+          EVP_DecryptInit(&ctx, EVP_aes_256_cbc(), masterkey, hash);
+          EVP_DecryptUpdate(&ctx, seckey, &seckey_len1, encrypted_seckey, encrypted_seckey_len);
+          ret = EVP_DecryptFinal(&ctx, seckey + seckey_len1, &seckey_len2);
+          if((ret == 1) && valid_seckey(seckey, seckey_len1 + seckey_len2, pubkey, pubkey_len))
+            {
+              /* We have a positive result */
+              pthread_mutex_lock(&found_password_lock);
+              printf("Password found: %s\n", pwd);
+              stop = 1;
+              pthread_mutex_unlock(&found_password_lock);
+            }
+        }
+      EVP_CIPHER_CTX_cleanup(&ctx);
+
+      dfargs->counter++;
+      free(pwd);
+    }
+  while(stop == 0);
 
   free(masterkey);
   free(seckey);
@@ -318,12 +442,17 @@ void handle_signal(int signo)
   unsigned int l_full = max_len - suffix_len - prefix_len;
   unsigned int l_skip = min_len - suffix_len - prefix_len;
   double space = 0;
-  for (l = l_skip; l <= l_full; l++)
-    space += pow(charset_len, l);
-  for (i = 0; i < nb_threads; i++)
+
+  if(dictionary == NULL)
+    for(l = l_skip; l <= l_full; l++)
+      space += pow(charset_len, l);
+
+  for(i = 0; i < nb_threads; i++)
     total_ops += thread_locals[i].counter;
+
   fprintf(stderr, "Tried passwords: %llu\n", total_ops);
-  fprintf(stderr, "Total space searched: %lf%%\n", (total_ops / space) * 100);
+  if(dictionary == NULL)
+    fprintf(stderr, "Total space searched: %lf%%\n", (total_ops / space) * 100);
 }
 
 
@@ -334,12 +463,13 @@ void handle_signal(int signo)
 void usage(char *progname)
 {
   fprintf(stderr, "\nbruteforce-wallet %s\n\n", VERSION_NUMBER);
-  fprintf(stderr, "Usage: %s [options] <filename>\n\n", progname);
+  fprintf(stderr, "Usage: %s [options] <wallet file>\n\n", progname);
   fprintf(stderr, "Options:\n");
   fprintf(stderr, "  -b <string>  Beginning of the password.\n");
   fprintf(stderr, "                 default: \"\"\n");
   fprintf(stderr, "  -e <string>  End of the password.\n");
   fprintf(stderr, "                 default: \"\"\n");
+  fprintf(stderr, "  -f <file>    Read the passwords from a file instead of generating them.\n");
   fprintf(stderr, "  -h           Show help and quit.\n");
   fprintf(stderr, "  -l <length>  Minimum password length (beginning and end included).\n");
   fprintf(stderr, "                 default: 1\n");
@@ -367,7 +497,7 @@ int main(int argc, char **argv)
 
   /* Get options and parameters. */
   opterr = 0;
-  while((c = getopt(argc, argv, "b:e:hl:m:s:t:")) != -1)
+  while((c = getopt(argc, argv, "b:e:f:hl:m:s:t:")) != -1)
     switch(c)
       {
       case 'b':
@@ -400,6 +530,15 @@ int main(int argc, char **argv)
             exit(EXIT_FAILURE);
           }
         mbstowcs(suffix, optarg, suffix_len + 1);
+        break;
+
+      case 'f':
+        dictionary = fopen(optarg, "r");
+        if(dictionary == NULL)
+          {
+            fprintf(stderr, "Error: can't open dictionary file.\n\n");
+            exit(EXIT_FAILURE);
+          }
         break;
 
       case 'h':
@@ -448,6 +587,7 @@ int main(int argc, char **argv)
           {
           case 'b':
           case 'e':
+          case 'f':
           case 'l':
           case 'm':
           case 's':
@@ -466,60 +606,67 @@ int main(int argc, char **argv)
   if(optind >= argc)
     {
       usage(argv[0]);
-      fprintf(stderr, "Error: missing filename.\n\n");
+      fprintf(stderr, "Error: missing wallet filename.\n\n");
       exit(EXIT_FAILURE);
     }
 
   filename = argv[optind];
 
   /* Check variables */
-  if(prefix == NULL)
+  if(dictionary != NULL)
     {
-      prefix_len = mbstowcs(NULL, "", 0);
-      prefix = (wchar_t *) calloc(prefix_len + 1, sizeof(wchar_t));
+      fprintf(stderr, "Warning: using dictionary mode, ignoring options -b, -e, -l, -m and -s.\n\n");
+    }
+  else
+    {
       if(prefix == NULL)
         {
-          fprintf(stderr, "Error: memory allocation failed.\n\n");
-          exit(EXIT_FAILURE);
+          prefix_len = mbstowcs(NULL, "", 0);
+          prefix = (wchar_t *) calloc(prefix_len + 1, sizeof(wchar_t));
+          if(prefix == NULL)
+            {
+              fprintf(stderr, "Error: memory allocation failed.\n\n");
+              exit(EXIT_FAILURE);
+            }
+          mbstowcs(prefix, "", prefix_len + 1);
         }
-      mbstowcs(prefix, "", prefix_len + 1);
-    }
-  if(suffix == NULL)
-    {
-      suffix_len = mbstowcs(NULL, "", 0);
-      suffix = (wchar_t *) calloc(suffix_len + 1, sizeof(wchar_t));
       if(suffix == NULL)
         {
-          fprintf(stderr, "Error: memory allocation failed.\n\n");
-          exit(EXIT_FAILURE);
+          suffix_len = mbstowcs(NULL, "", 0);
+          suffix = (wchar_t *) calloc(suffix_len + 1, sizeof(wchar_t));
+          if(suffix == NULL)
+            {
+              fprintf(stderr, "Error: memory allocation failed.\n\n");
+              exit(EXIT_FAILURE);
+            }
+          mbstowcs(suffix, "", suffix_len + 1);
         }
-      mbstowcs(suffix, "", suffix_len + 1);
-    }
-  if(charset == NULL)
-    {
-      charset_len = mbstowcs(NULL, default_charset, 0);
-      charset = (wchar_t *) calloc(charset_len + 1, sizeof(wchar_t));
       if(charset == NULL)
         {
-          fprintf(stderr, "Error: memory allocation failed.\n\n");
-          exit(EXIT_FAILURE);
+          charset_len = mbstowcs(NULL, default_charset, 0);
+          charset = (wchar_t *) calloc(charset_len + 1, sizeof(wchar_t));
+          if(charset == NULL)
+            {
+              fprintf(stderr, "Error: memory allocation failed.\n\n");
+              exit(EXIT_FAILURE);
+            }
+          mbstowcs(charset, default_charset, charset_len + 1);
         }
-      mbstowcs(charset, default_charset, charset_len + 1);
-    }
-  if(nb_threads > charset_len)
-    {
-      fprintf(stderr, "Warning: number of threads (%u) bigger than character set length (%u). Only using %u threads.\n\n", nb_threads, charset_len, charset_len);
-      nb_threads = charset_len;
-    }
-  if(min_len < prefix_len + suffix_len + 1)
-    {
-      fprintf(stderr, "Warning: minimum length (%u) smaller than the length of specified password characters (%u). Setting minimum length to %u.\n\n", min_len, prefix_len + suffix_len, prefix_len + suffix_len + 1);
-      min_len = prefix_len + suffix_len + 1;
-    }
-  if(max_len < min_len)
-    {
-      fprintf(stderr, "Warning: maximum length (%u) smaller than minimum length (%u). Setting maximum length to %u.\n\n", max_len, min_len, min_len);
-      max_len = min_len;
+      if(nb_threads > charset_len)
+        {
+          fprintf(stderr, "Warning: number of threads (%u) bigger than character set length (%u). Only using %u threads.\n\n", nb_threads, charset_len, charset_len);
+          nb_threads = charset_len;
+        }
+      if(min_len < prefix_len + suffix_len + 1)
+        {
+          fprintf(stderr, "Warning: minimum length (%u) smaller than the length of specified password characters (%u). Setting minimum length to %u.\n\n", min_len, prefix_len + suffix_len, prefix_len + suffix_len + 1);
+          min_len = prefix_len + suffix_len + 1;
+        }
+      if(max_len < min_len)
+        {
+          fprintf(stderr, "Warning: maximum length (%u) smaller than minimum length (%u). Setting maximum length to %u.\n\n", max_len, min_len, min_len);
+          max_len = min_len;
+        }
     }
 
   signal(SIGUSR1, handle_signal);
@@ -533,6 +680,7 @@ int main(int argc, char **argv)
     }
 
   pthread_mutex_init(&found_password_lock, NULL);
+  pthread_mutex_init(&dictionary_lock, NULL);
 
   /* Start decryption threads. */
   decryption_threads = (pthread_t *) calloc(nb_threads, sizeof(pthread_t));
@@ -544,12 +692,19 @@ int main(int argc, char **argv)
     }
   for(i = 0; i < nb_threads; i++)
     {
-      thread_locals[i].index_start = i * (charset_len / nb_threads);
-      if(i == nb_threads - 1)
-        thread_locals[i].index_end = charset_len - 1;
+      if(dictionary == NULL)
+        {
+          thread_locals[i].index_start = i * (charset_len / nb_threads);
+          if(i == nb_threads - 1)
+            thread_locals[i].index_end = charset_len - 1;
+          else
+            thread_locals[i].index_end = (i + 1) * (charset_len / nb_threads) - 1;
+          ret = pthread_create(&decryption_threads[i], NULL, &decryption_func_bruteforce, &thread_locals[i]);
+        }
       else
-        thread_locals[i].index_end = (i + 1) * (charset_len / nb_threads) - 1;
-      ret = pthread_create(&decryption_threads[i], NULL, &decryption_func, &thread_locals[i]);
+        {
+          ret = pthread_create(&decryption_threads[i], NULL, &decryption_func_dictionary, &thread_locals[i]);
+        }
       if(ret != 0)
         {
           perror("Error: decryption thread");
@@ -564,6 +719,7 @@ int main(int argc, char **argv)
   free(thread_locals);
   free(decryption_threads);
   pthread_mutex_destroy(&found_password_lock);
+  pthread_mutex_destroy(&dictionary_lock);
   free(encrypted_masterkey);
   free(encrypted_seckey);
   free(pubkey);

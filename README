@@ -3,6 +3,19 @@
 The purpose of this program is to try to find the password of an encrypted
 Peercoin (or Bitcoin, Litecoin, etc...) wallet file (i.e. wallet.dat).
 
+It can be used in two ways:
+
+ - try all the possible passwords given a charset
+ - try all the passwords in a file
+
+There is a command line option to specify the  number of threads to use.
+
+Sending a USR1 signal to a running bruteforce-wallet process makes it print
+progress and continue.
+
+
+## Exhaustive mode
+
 The program tries to decrypt one of the encrypted addresses in the wallet by
 trying all the possible passwords. It is especially useful if you know
 something about the password (i.e. you forgot a part of your password but still
@@ -17,10 +30,13 @@ There are command line options to specify:
  - the beginning of the password
  - the end of the password
  - the character set to use (among the characters of the current locale)
- - the number of threads to use
 
-Sending a USR1 signal to a running bruteforce-wallet process makes it print
-progress info to standard error and continue.
+
+## Dictionary mode
+
+The program tries to decrypt one of the encrypted addresses in the wallet by
+trying all the passwords contained in a file. The file must have one password
+per line.
 
 
 ## Dependencies
@@ -56,6 +72,12 @@ Try to find the password of an encrypted wallet file using 8 threads, trying
 only passwords with 10 characters using the character set "P情8ŭ":
 
     bruteforce-wallet -t 8 -l 10 -m 10 -s "P情8ŭ" wallet.dat
+
+
+Try to find the password of an encrypted wallet file using 6 threads, trying
+the passwords contained in a dictionary file:
+
+    bruteforce-wallet -t 6 -f dictionary.txt wallet.dat
 
 
 Print progress info:
