@@ -44,7 +44,7 @@ const EVP_CIPHER *cipher;
 const EVP_MD *digest;
 FILE *dictionary = NULL;
 pthread_mutex_t found_password_lock, dictionary_lock;
-char stop = 0;
+char stop = 0, found_password = 0;
 unsigned int nb_threads = 1;
 struct decryption_func_locals
 {
@@ -52,6 +52,31 @@ struct decryption_func_locals
   unsigned int index_end;
   unsigned long long int counter;
 } *thread_locals;
+
+
+/*
+ * Statistics
+ */
+
+void handle_signal(int signo)
+{
+  unsigned long long int total_ops = 0;
+  unsigned int i, l;
+  unsigned int l_full = max_len - suffix_len - prefix_len;
+  unsigned int l_skip = min_len - suffix_len - prefix_len;
+  double space = 0;
+
+  if(dictionary == NULL)
+    for(l = l_skip; l <= l_full; l++)
+      space += pow(charset_len, l);
+
+  for(i = 0; i < nb_threads; i++)
+    total_ops += thread_locals[i].counter;
+
+  fprintf(stderr, "Tried passwords: %llu\n", total_ops);
+  if(dictionary == NULL)
+    fprintf(stderr, "Total space searched: %lf%%\n", (total_ops / space) * 100);
+}
 
 
 /*
@@ -159,6 +184,7 @@ void * decryption_func_bruteforce(void *arg)
               EVP_DecryptInit(&ctx, EVP_aes_256_cbc(), key, iv);
               EVP_DecryptUpdate(&ctx, masterkey, &masterkey_len1, encrypted_masterkey, encrypted_masterkey_len);
               ret = EVP_DecryptFinal(&ctx, masterkey + masterkey_len1, &masterkey_len2);
+              dfargs->counter++;
               if(ret == 1)
                 {
                   /* Decrypt the secret key with the master key */
@@ -169,7 +195,9 @@ void * decryption_func_bruteforce(void *arg)
                   if((ret == 1) && valid_seckey(seckey, seckey_len1 + seckey_len2, pubkey, pubkey_len))
                     {
                       /* We have a positive result */
+                      handle_signal(SIGUSR1); /* Print some stats */
                       pthread_mutex_lock(&found_password_lock);
+                      found_password = 1;
                       printf("Password found: %ls\n", password);
                       stop = 1;
                       pthread_mutex_unlock(&found_password_lock);
@@ -177,7 +205,6 @@ void * decryption_func_bruteforce(void *arg)
                 }
               EVP_CIPHER_CTX_cleanup(&ctx);
 
-              dfargs->counter++;
               free(pwd);
 
               if(len == 0)
@@ -299,6 +326,7 @@ void * decryption_func_dictionary(void *arg)
       EVP_DecryptInit(&ctx, EVP_aes_256_cbc(), key, iv);
       EVP_DecryptUpdate(&ctx, masterkey, &masterkey_len1, encrypted_masterkey, encrypted_masterkey_len);
       ret = EVP_DecryptFinal(&ctx, masterkey + masterkey_len1, &masterkey_len2);
+      dfargs->counter++;
       if(ret == 1)
         {
           /* Decrypt the secret key with the master key */
@@ -309,7 +337,9 @@ void * decryption_func_dictionary(void *arg)
           if((ret == 1) && valid_seckey(seckey, seckey_len1 + seckey_len2, pubkey, pubkey_len))
             {
               /* We have a positive result */
+              handle_signal(SIGUSR1); /* Print some stats */
               pthread_mutex_lock(&found_password_lock);
+              found_password = 1;
               printf("Password found: %s\n", pwd);
               stop = 1;
               pthread_mutex_unlock(&found_password_lock);
@@ -317,7 +347,6 @@ void * decryption_func_dictionary(void *arg)
         }
       EVP_CIPHER_CTX_cleanup(&ctx);
 
-      dfargs->counter++;
       free(pwd);
     }
   while(stop == 0);
@@ -428,31 +457,6 @@ int get_wallet_info(char *filename)
   db_cursor->close(db_cursor);
   db->close(db, 0);
   return(0);
-}
-
-
-/*
- * Statistics
- */
-
-void handle_signal(int signo)
-{
-  unsigned long long int total_ops = 0;
-  unsigned int i, l;
-  unsigned int l_full = max_len - suffix_len - prefix_len;
-  unsigned int l_skip = min_len - suffix_len - prefix_len;
-  double space = 0;
-
-  if(dictionary == NULL)
-    for(l = l_skip; l <= l_full; l++)
-      space += pow(charset_len, l);
-
-  for(i = 0; i < nb_threads; i++)
-    total_ops += thread_locals[i].counter;
-
-  fprintf(stderr, "Tried passwords: %llu\n", total_ops);
-  if(dictionary == NULL)
-    fprintf(stderr, "Total space searched: %lf%%\n", (total_ops / space) * 100);
 }
 
 
@@ -715,6 +719,11 @@ int main(int argc, char **argv)
   for(i = 0; i < nb_threads; i++)
     {
       pthread_join(decryption_threads[i], NULL);
+    }
+  if(found_password == 0)
+    {
+      handle_signal(SIGUSR1); /* Print some stats */
+      fprintf(stderr, "Password not found\n");
     }
   free(thread_locals);
   free(decryption_threads);
