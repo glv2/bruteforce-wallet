@@ -1,7 +1,7 @@
 /*
 Bruteforce a wallet file.
 
-Copyright 2014 Guillaume LE VAILLANT
+Copyright 2014-2016 Guillaume LE VAILLANT
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -20,6 +20,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #ifndef VERSION_H
 #define VERSION_H 1
 
-#define VERSION_NUMBER "1.4"
+#define VERSION_NUMBER "1.4.1"
 
 #endif

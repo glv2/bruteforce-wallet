@@ -1,7 +1,7 @@
 /*
 Bruteforce a wallet file.
 
-Copyright 2014-2015 Guillaume LE VAILLANT
+Copyright 2014-2016 Guillaume LE VAILLANT
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -249,18 +249,17 @@ int read_dictionary_line(unsigned char **line, unsigned int *n)
       exit(EXIT_FAILURE);
     }
 
+  pthread_mutex_lock(&dictionary_lock);
   while(1)
     {
-      pthread_mutex_lock(&dictionary_lock);
       ret = fgetc(dictionary);
-      pthread_mutex_unlock(&dictionary_lock);
-
       if(ret == EOF)
         {
           if(*n == 0)
             {
               free(*line);
               *line = NULL;
+              pthread_mutex_unlock(&dictionary_lock);
               return(0);
             }
           else
@@ -270,7 +269,7 @@ int read_dictionary_line(unsigned char **line, unsigned int *n)
       if((ret == '\r') || (ret == '\n'))
         {
           if(*n == 0)
-              continue;
+            continue;
           else
             break;
         }
@@ -285,10 +284,12 @@ int read_dictionary_line(unsigned char **line, unsigned int *n)
           if(*line == NULL)
             {
               fprintf(stderr, "Error: memory allocation failed.\n\n");
+              pthread_mutex_unlock(&dictionary_lock);
               exit(EXIT_FAILURE);
             }
         }
     }
+  pthread_mutex_unlock(&dictionary_lock);
 
   (*line)[*n] = '\0';
 
