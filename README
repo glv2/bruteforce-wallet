@@ -44,6 +44,25 @@ per line.
 The program requires the OpenSSL and BerkeleyDB libraries.
 
 
+## Compilation
+
+If you are building from the raw sources, you must first generate the
+configuration script:
+
+    ./autogen.sh
+
+
+Then, build the program with the commands:
+
+    ./configure
+    make
+
+
+To install it on your system, use the command:
+
+    make install
+
+
 ## Limitations
 
 The program currently only works on unix-like POSIX systems (e.g. GNU/Linux).
