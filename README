@@ -41,7 +41,10 @@ per line.
 
 ## Dependencies
 
-The program requires the OpenSSL and BerkeleyDB libraries.
+The program requires the OpenSSL and BerkeleyDB libraries. Installation on Debian & Ubuntu:
+
+
+	apt-get install libdb6.0-dev libssl-dev -y
 
 
 ## Compilation
