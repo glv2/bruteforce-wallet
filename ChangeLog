@@ -1,3 +1,9 @@
+2017-07-19 Guillaume LE VAILLANT <glv@posteo.net>
+	Version 1.5.0
+	Add bruteforcing speed and last tried password to progress info.
+	Add option to print progress info regularly.
+	Add option to restore/save state from/to a file.
+
 2016-05-24 Guillaume LE VAILLANT <guillaume.le.vaillant@openmailbox.org>
 	Version 1.4.1
 	Fix a mutex in the function reading lines from the dictionary file.

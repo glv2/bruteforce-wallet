@@ -44,7 +44,7 @@ per line.
 The program requires the OpenSSL and BerkeleyDB libraries. Installation on Debian & Ubuntu:
 
 
-	apt-get install libdb6.0-dev libssl-dev -y
+	apt install libdb6.0-dev libssl-dev -y
 
 
 ## Compilation
@@ -105,6 +105,18 @@ the passwords contained in a dictionary file:
 Print progress info:
 
     pkill -USR1 -f bruteforce-wallet
+
+
+Print progress info every 30 seconds:
+
+    bruteforce-wallet -t 6 -f dictionary.txt -v 30 wallet.dat
+
+
+Save/restore state between sessions:
+
+    bruteforce-wallet -t 6 -f dictionary.txt -w state.txt wallet.dat
+      (Let the program run for a few minutes and stop it)
+    bruteforce-wallet -t 6 -w state.txt wallet.dat
 
 
 ## Donations
