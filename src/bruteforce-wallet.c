@@ -167,7 +167,10 @@ int generate_next_password(unsigned char **pwd, unsigned int *pwd_len)
   if(len == 0)
     len = min_len - prefix_len - suffix_len;
   if(len > max_len - prefix_len - suffix_len)
+  {
+    pthread_mutex_unlock(&get_password_lock);
     return(0);
+  }
 
   /* Initialize index table */
   if(tab == NULL)
