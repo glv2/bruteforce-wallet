@@ -582,24 +582,24 @@ int get_wallet_info(char *filename)
   ret = db_create(&db, NULL, 0);
   if(ret != 0)
   {
-    fprintf(stderr, "Error: db_create: %s.\n\n", db_strerror(ret));
-    exit(EXIT_FAILURE);
+    fprintf(stderr, "Error: db_create: %s.\n", db_strerror(ret));
+    return(0);
   }
 
   ret = db->open(db, NULL, filename, "main", DB_UNKNOWN, DB_RDONLY, 0);
   if(ret != 0)
   {
-    db->err(db, ret, "Error: %s.\n\n", filename);
+    db->err(db, ret, "Error: couldn't open \"main\" database in \"%s\"", filename);
     db->close(db, 0);
-    exit(EXIT_FAILURE);
+    return(0);
   }
 
   ret = db->cursor(db, NULL, &db_cursor, 0);
   if(ret != 0)
   {
-    db->err(db, ret, "Error: %s.\n\n", filename);
+    db->err(db, ret, "Error: couldn't create cursor on \"main\" database");
     db->close(db, 0);
-    exit(EXIT_FAILURE);
+    return(0);
   }
 
   memset(&db_key, 0, sizeof(db_key));
