@@ -1,4 +1,4 @@
-AC_INIT(bruteforce_wallet, 1.5.1)
+AC_INIT(bruteforce_wallet, 1.5.2)
 AM_INIT_AUTOMAKE
 AC_CONFIG_SRCDIR(src/bruteforce-wallet.c)
 
