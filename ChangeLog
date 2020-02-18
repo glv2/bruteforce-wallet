@@ -1,3 +1,7 @@
+2020-02-18 Guillaume LE VAILLANT <glv@posteo.net>
+	Version 1.5.3
+	Minor fixes.
+
 2019-05-21 Guillaume LE VAILLANT <glv@posteo.net>
 	Version 1.5.2
 	Fix possible segmentation fault.
