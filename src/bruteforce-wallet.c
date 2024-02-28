@@ -130,9 +130,18 @@ void print_status()
 
 void * status_func(void *arg)
 {
+  unsigned int i;
+
   while(stop == 0)
   {
-    sleep(status_interval);
+    for(i = 0; i < status_interval; i++)
+    {
+      sleep(1);
+      if(stop == 1)
+      {
+        pthread_exit(NULL);
+      }
+    }
     print_status();
   }
 
@@ -443,9 +452,18 @@ void save_state()
 
 void * state_func(void *arg)
 {
+  unsigned int i;
+
   while(stop == 0)
   {
-    sleep(60);
+    for(i = 0; i < 60; i++)
+    {
+      sleep(1);
+      if(stop == 1)
+      {
+        pthread_exit(NULL);
+      }
+    }
     save_state();
   }
 
