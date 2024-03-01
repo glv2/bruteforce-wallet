@@ -1,3 +1,7 @@
+2024-03-01 Guillaume LE VAILLANT <glv@posteo.net>
+	Version 1.5.4
+	Fix some possible deadlock and race condition.
+
 2020-02-18 Guillaume LE VAILLANT <glv@posteo.net>
 	Version 1.5.3
 	Minor fixes.
